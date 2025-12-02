@@ -148,7 +148,7 @@ jobs:
           REGISTRY_PASSWORD: ${{ github.token }}
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
-          image: ${{ env.IMAGE_NAME }}
+          image: ${{ matrix.flavor == '' && env.IMAGE_NAME || format('{0}-{1}', env.IMAGE_NAME, matrix.flavor) }} # append flavor to image name if not empty
           tags: ${{ needs.generate_metadata.outputs.tags }}
           username: ${{ env.REGISTRY_USER }}
           password: ${{ env.REGISTRY_PASSWORD }}
