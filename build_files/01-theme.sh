@@ -138,8 +138,21 @@ mkdir -p "/usr/share/fonts/Maple Mono"
 MAPLE_TMPDIR="$(mktemp -d)"
 trap 'rm -rf "${MAPLE_TMPDIR}"' EXIT
 
-LATEST_RELEASE_FONT="$(curl "https://api.github.com/repos/subframe7536/maple-font/releases/latest" | jq '.assets[] | select(.name == "MapleMono-Variable.zip") | .browser_download_url' -rc)"
-curl -fSsLo "${MAPLE_TMPDIR}/maple.zip" "${LATEST_RELEASE_FONT}"
+LATEST_RELEASE_FONT="$(curl -fSsL \
+	--connect-timeout 5 \
+    --max-time 10 \
+    --retry 5 \
+    --retry-delay 0 \
+    --retry-max-time 40 \
+	"https://api.github.com/repos/subframe7536/maple-font/releases/latest" \
+	| jq '.assets[] | select(.name == "MapleMono-Variable.zip") | .browser_download_url' -rc)"
+curl -fSsL \
+	--connect-timeout 5 \
+    --max-time 10 \
+    --retry 5 \
+    --retry-delay 0 \
+    --retry-max-time 40 \
+	-o "${MAPLE_TMPDIR}/maple.zip" "${LATEST_RELEASE_FONT}"
 unzip "${MAPLE_TMPDIR}/maple.zip" -d "/usr/share/fonts/Maple Mono"
 
 fc-cache --force --really-force --system-only --verbose # recreate font-cache to pick up the added fonts
