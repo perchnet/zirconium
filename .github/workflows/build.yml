@@ -30,7 +30,7 @@ env:
 
 jobs:
   build:
-    name: Build and push image
+    name: Build images
     runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     timeout-minutes: 30
     env:
@@ -85,7 +85,9 @@ jobs:
           context: . #${{ env.IMAGE_NAME }}
           image: ${{ env.IMAGE_NAME }}
           tags: ${{ steps.meta.outputs.tags }}
-          build-args: BUILD_FLAVOR=${{ matrix.flavor }}
+          build-args: |
+            BUILD_FLAVOR=${{ matrix.flavor }}
+            BASE_VERSION=43-${{ matrix.platform == 'amd64' && 'x86_64' || 'aarch64' }}
           labels: ${{ steps.meta.outputs.labels }}
           oci: true
           platforms: linux/${{ matrix.platform }}
@@ -109,7 +111,7 @@ jobs:
           retention-days: 1
 
   upload:
-    name: Upload images
+    name: Push images
     runs-on: ubuntu-latest
     permissions:
       contents: read
