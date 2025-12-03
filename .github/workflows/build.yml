@@ -13,6 +13,10 @@ on:
       - "**/README.md"
   workflow_dispatch:
 
+concurrency:
+  # only run one build at a time
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
 
 env:
   IMAGE_NAME: "${{ github.event.repository.name }}"
@@ -49,6 +53,7 @@ jobs:
       fail-fast: false
       matrix: ${{fromJson(needs.generate_matrix.outputs.matrix)}}
     outputs:
+      image-name: ${{ matrix.flavor == '' && env.IMAGE_NAME || format('{0}-{1}', env.IMAGE_NAME, matrix.flavor) }} # append flavor to image name if not empty
       labels: ${{ steps.metadata.outputs.labels }}
       tags: ${{ steps.metadata.outputs.tags }}
     steps:
@@ -125,7 +130,7 @@ jobs:
           containerfiles: |
             ./Containerfile
           context: . #${{ env.IMAGE_NAME }}
-          image: ${{ matrix.flavor == '' && env.IMAGE_NAME || format('{0}-{1}', env.IMAGE_NAME, matrix.flavor) }} # append flavor to image name if not empty
+          image: ${{ needs.generate_metadata.outputs.image-name }}
           tags: ${{ env.DEFAULT_TAG }}
           build-args: BUILD_FLAVOR=${{ matrix.flavor }}
           labels: ${{ needs.generate_metadata.outputs.labels }}
@@ -148,7 +153,7 @@ jobs:
           REGISTRY_PASSWORD: ${{ github.token }}
         with:
           registry: ${{ env.IMAGE_REGISTRY }}
-          image: ${{ matrix.flavor == '' && env.IMAGE_NAME || format('{0}-{1}', env.IMAGE_NAME, matrix.flavor) }} # append flavor to image name if not empty
+          image: ${{ needs.generate_metadata.outputs.image-name }}
           tags: ${{ needs.generate_metadata.outputs.tags }}
           username: ${{ env.REGISTRY_USER }}
           password: ${{ env.REGISTRY_PASSWORD }}
@@ -159,7 +164,7 @@ jobs:
       - name: Sign container image
         #if: github.ref_name == github.event.repository.default_branch
         run: |
-          cosign sign -y --key env://COSIGN_PRIVATE_KEY "${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}@$DIGEST"
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY "${{ env.IMAGE_REGISTRY }}/${{ needs.generate_metadata.outputs.image-name }}@$DIGEST"
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
           COSIGN_EXPERIMENTAL: false
