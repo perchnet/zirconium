@@ -37,18 +37,12 @@ jobs:
       - name: Set matrix
         id: set-matrix
         run: |
-          #!/usr/bin/env bash
           # build matrix from comma-separated strings 
-          >>"${GITHUB_OUTPUT}" <<'EOF' jq -f /dev/stdin -r -n --arg ps "$PLATFORMS" --arg fs "$FLAVORS" 
-            {
-              "include": [
-                {
-                    "platform": ($ps | split(","))[],
-                    "flavor": ($fs | split(","))[]
-                }
-              ]
-            }
-          EOF
+          jq -r -n --arg platforms "$PLATFORMS" --arg flavors "$FLAVORS" '
+            ($platforms | split(",")) as $pls |
+            ($flavors  | split(",")) as $fls |
+            { include: [ $pls[] as $p | $fls[] as $f | { platform: $p, flavor: $f } ] }
+            '>> "$GITHUB_OUTPUT"
 
   generate_metadata:
     name: Generate image metadata
