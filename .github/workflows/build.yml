@@ -98,6 +98,33 @@ jobs:
             echo "IMAGE_NAME=${IMAGE_NAME}-${{ matrix.flavor }}" >> $GITHUB_ENV
           fi
 
+      - name: Download Maple Mono font
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p "system_files/usr/share/fonts/Maple Mono"
+
+          MAPLE_TMPDIR="$(mktemp -d)"
+          trap 'rm -rf "${MAPLE_TMPDIR}"' EXIT
+
+          LATEST_RELEASE_FONT="$(curl -fSsL \
+            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --connect-timeout 5 \
+              --max-time 10 \
+              --retry 5 \
+              --retry-delay 0 \
+              --retry-max-time 40 \
+            "https://api.github.com/repos/subframe7536/maple-font/releases/latest" \
+            | jq '.assets[] | select(.name == "MapleMono-Variable.zip") | .browser_download_url' -rc)"
+          curl -fSsL \
+            --connect-timeout 5 \
+              --max-time 10 \
+              --retry 5 \
+              --retry-delay 0 \
+              --retry-max-time 40 \
+            -o "${MAPLE_TMPDIR}/maple.zip" "${LATEST_RELEASE_FONT}"
+          unzip "${MAPLE_TMPDIR}/maple.zip" -d "system_files/usr/share/fonts/Maple Mono"
+
       - name: Build image
         id: build
         env:
