@@ -23,7 +23,7 @@ env:
   IMAGE_DESC: "Opinionated niri + bootc image"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
   DEFAULT_TAG: "latest"
-  PLATFORMS: "amd64,arm64"
+  PLATFORMS: "x86_64,aarch64"
   FLAVORS: ",nvidia"
   IMAGE_KEYWORDS: "bootc,niri"
   IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/237492973?s=400&v=4"
@@ -31,7 +31,7 @@ env:
 jobs:
   build:
     name: Build images
-    runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    runs-on: ${{ matrix.platform == 'x86_64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     timeout-minutes: 30
     env:
       IMAGE_NAME: ${{ matrix.flavor == '' && github.event.repository.name || format('{0}-{1}', github.event.repository.name, matrix.flavor) }} # append flavor to image name if not empty
@@ -59,7 +59,7 @@ jobs:
 
         ## comented out because maybe we don't need to manually install this rn?
       #- name: Install dependencies
-      #  if: matrix.platform == 'arm64'
+      #  if: matrix.platform == 'aarch64'
       #  run: |
       #    sudo apt update -y
       #    sudo apt install -y \
@@ -115,7 +115,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
             BUILD_FLAVOR=${{ matrix.flavor }}
-            BASE_VERSION=43-${{ matrix.platform == 'amd64' && 'x86_64' || 'aarch64' }}
+            BASE_VERSION=43-${{ matrix.platform  }}
           labels: ${{ steps.meta.outputs.labels }}
           oci: true
           platforms: linux/${{ matrix.platform }}
@@ -147,19 +147,19 @@ jobs:
     needs: [build]
     steps:
 
-      - name: Download amd64 image
+      - name: Download x86_64 image
         uses: actions/download-artifact@v5
         with:
           name: ${{ env.IMAGE_NAME }}-x86_64
           path: /tmp
-      - name: Download arm64 image
+      - name: Download aarch64 image
         uses: actions/download-artifact@v5
         with:
-          name: ${{ env.IMAGE_NAME }}-arm64
+          name: ${{ env.IMAGE_NAME }}-aarch64
           path: /tmp
       - run: podman manifest create ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:manifest
-      - run: podman manifest add ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:manifest oci-archive:/tmp/arm64-oci.tar
-      - run: podman manifest add ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:manifest oci-archive:/tmp/amd64-oci.tar
+      - run: podman manifest add ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:manifest oci-archive:/tmp/aarch64-oci.tar
+      - run: podman manifest add ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:manifest oci-archive:/tmp/x86_64-oci.tar
       - run: podman manifest inspect ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:manifest
 
       - name: Get current date
