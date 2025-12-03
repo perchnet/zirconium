@@ -138,7 +138,16 @@ mkdir -p "/usr/share/fonts/Maple Mono"
 MAPLE_TMPDIR="$(mktemp -d)"
 trap 'rm -rf "${MAPLE_TMPDIR}"' EXIT
 
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+	echo "Using provided GITHUB_TOKEN for GitHub API requests, to prevent rate-limiting"
+	GH_AUTH_FLAG=("--header" "Authorization: token ${GITHUB_TOKEN}")
+else
+	echo "No GITHUB_TOKEN provided; proceeding without authentication"
+	GH_AUTH_FLAG=()
+fi
+
 LATEST_RELEASE_FONT="$(curl -fSsL \
+	"${GH_AUTH_FLAG[@]}" \
 	--connect-timeout 5 \
     --max-time 10 \
     --retry 5 \
