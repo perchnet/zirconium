@@ -76,6 +76,34 @@ jobs:
             type=raw,value=build
           flavor: |
             suffix=-${{ matrix.platform }}
+
+      - name: Download Maple Mono font
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p "system_files/usr/share/fonts/Maple Mono"
+
+          MAPLE_TMPDIR="$(mktemp -d)"
+          trap 'rm -rf "${MAPLE_TMPDIR}"' EXIT
+
+          LATEST_RELEASE_FONT="$(curl -fSsL \
+            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            --connect-timeout 5 \
+              --max-time 10 \
+              --retry 5 \
+              --retry-delay 0 \
+              --retry-max-time 40 \
+            "https://api.github.com/repos/subframe7536/maple-font/releases/latest" \
+            | jq '.assets[] | select(.name == "MapleMono-Variable.zip") | .browser_download_url' -rc)"
+          curl -fSsL \
+            --connect-timeout 5 \
+              --max-time 10 \
+              --retry 5 \
+              --retry-delay 0 \
+              --retry-max-time 40 \
+            -o "${MAPLE_TMPDIR}/maple.zip" "${LATEST_RELEASE_FONT}"
+          unzip "${MAPLE_TMPDIR}/maple.zip" -d "system_files/usr/share/fonts/Maple Mono"
+
       - name: Build Image
         id: build_image
         uses: redhat-actions/buildah-build@7a95fa7ee0f02d552a32753e7414641a04307056 # v2
@@ -102,7 +130,7 @@ jobs:
 
       - run: podman save -o /tmp/${{ matrix.platform }}-oci.tar ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ matrix.platform }} --format oci-archive
 
-      - name: Upload digest
+      - name: Upload built image
         uses: actions/upload-artifact@v5
         with:
           name: ${{ env.IMAGE_NAME }}-${{ matrix.platform }}
@@ -172,7 +200,7 @@ jobs:
           podman tag ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:manifest $(echo "${{ steps.metadata.outputs.tags }}" | tr '\n' ' ')
 
 
-      - name: Push To GHCR
+      - name: Push to GHCR
         uses: redhat-actions/push-to-registry@5ed88d269cf581ea9ef6dd6806d01562096bee9c # v2
         #if: github.ref_name == github.event.repository.default_branch
         id: push
