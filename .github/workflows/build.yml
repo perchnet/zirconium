@@ -37,6 +37,7 @@ jobs:
       - name: Set matrix
         id: set-matrix
         run: |
+          #!/usr/bin/env bash
           # build matrix from comma-separated strings 
           >>"${GITHUB_OUTPUT}" <<'EOF' jq -f /dev/stdin -r -n --arg ps "$PLATFORMS" --arg fs "$FLAVORS" 
             {
