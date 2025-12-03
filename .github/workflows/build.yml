@@ -38,13 +38,17 @@ jobs:
         id: set-matrix
         run: |
           # build matrix from comma-separated strings 
-          MATRIX=$(jq -n --arg platforms "$PLATFORMS" --arg flavors "$FLAVORS" '
-            ($platforms | split(",") | map(select(length > 0))) as $pls |
-            ($flavors  | split(",") | map(if . == "" then "" else . end)) as $fls |
-            { include: [ $pls[] as $p | $fls[] as $f | { platform: $p, flavor: $f } ] }
-          ')
+          >>"${GITHUB_OUTPUT}" <<'EOF' jq -f /dev/stdin -r -n --arg ps "$PLATFORMS" --arg fs "$FLAVORS" 
+            {
+              "include": [
+                {
+                    "platform": ($ps | split(","))[],
+                    "flavor": ($fs | split(","))[]
+                }
+              ]
+            }
+          EOF
 
-          echo "matrix=$(echo "$MATRIX" | jq -c '.')" >> "$GITHUB_OUTPUT"
   generate_metadata:
     name: Generate image metadata
     runs-on: ubuntu-latest
