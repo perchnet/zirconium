@@ -100,8 +100,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: podman run --privileged -v /tmp:/tmp -v /var/run/docker.sock:/var/run/docker.sock \
-            quay.io/skopeo/stable copy containers-storage:${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ matrix.platform }} oci-archive:/tmp/${{ matrix.platform }}-oci.tar
+      - run: podman save -o /tmp/${{ matrix.platform }}-oci.tar ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ matrix.platform }} --format oci-archive
 
       - name: Upload digest
         uses: actions/upload-artifact@v5
