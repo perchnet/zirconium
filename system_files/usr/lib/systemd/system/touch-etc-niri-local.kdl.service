@@ -1,0 +1,10 @@
+
+[Unit]
+Description = Ensure /etc/niri/local.kdl exists
+
+[Service]
+Type = oneshot
+ExecStart = touch /etc/niri/local.kdl
+
+[Install]
+WantedBy = multi-user.target
