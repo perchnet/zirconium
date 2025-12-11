@@ -1,0 +1,9 @@
+[[customizations.filesystem]]
+mountpoint = "/"
+minsize = "20 GiB"
+
+[[customizations.filesystem]]
+mountpoint = "/boot"
+fs_type = "ext4"
+minsize = "2 GiB"
+

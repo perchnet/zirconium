@@ -289,3 +289,17 @@ jobs:
 
             cosign sign -y --key env://COSIGN_PRIVATE_KEY "${TARGET_MANIFEST}@$(< /tmp/digestfile)"
           done
+
+  dispatch:
+    name: Send "container-built" event
+    needs:
+      - build_push
+      - manifest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Send "container-built" event to trigger disk build
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          event-type: "container-built"

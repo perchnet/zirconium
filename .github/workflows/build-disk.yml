@@ -2,6 +2,8 @@
 name: Build disk images
 
 on:
+  repository_dispatch:
+    types: ["container-built"]
   workflow_dispatch:
     inputs:
       upload-to-s3:
@@ -19,8 +21,8 @@ on:
     branches:
       - main
     paths:
-      - './disk_config/disk.toml'
-      - './disk_config/iso.toml'
+      - './disk_config/qcow2.toml'
+      - './disk_config/raw.toml'
       - './.github/workflows/build-disk.yml'
 
 env:
@@ -40,13 +42,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        disk-type: ["qcow2", "anaconda-iso"]
+        disk-type: ["qcow2", "raw"]
+        platform: ["amd64", "arm64"]
     permissions:
       contents: read
       packages: read
       id-token: write
 
     steps:
+      - name: Wait for parent job to finish
+        if: github.event_name == 'workflow_run'
+        uses: lewagon/wait-on-check-action@v1.4.1
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          check-name: "Build container image"
+          wait-interval: 15
       - name: Prepare environment
         run: |
           USER_UID=$(id -u)
@@ -79,25 +89,24 @@ jobs:
 
       - name: Build disk images
         id: build
-        uses: osbuild/bootc-image-builder-action@main
+        uses: osbuild/bootc-image-builder-action@v0.0.2
         with:
-          builder-image: ${{ env.BIB_IMAGE }}
-          config-file: ${{ matrix.disk-type == 'anaconda-iso' && './disk_config/iso.toml' || './disk_config/disk.toml' }}
+          config-file: ${{ matrix.disk-type }}
           image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}
-          chown: ${{ env.USER_UID }}:${{ env.USER_GID }}
           types: ${{ matrix.disk-type }}
-          additional-args: --use-librepo=True
+          rootfs: ${{ matrix.disk-type == 'qcow2' && 'btrfs' || null }}
 
       - name: Upload disk images and Checksum to Job Artifacts
         if: inputs.upload-to-s3 != true && github.event_name != 'pull_request'
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v4
         with:
+          name: ${{ env.IMAGE_NAME }}-${{ matrix.platform }}.${{ matrix.disk-type == 'anaconda-iso' && 'iso' || matrix.disk-type }}
           path: ${{ steps.build.outputs.output-directory }}
           if-no-files-found: error
           retention-days: 0
           compression-level: 0
           overwrite: true
-      
+
       - name: Upload to S3
         if: inputs.upload-to-s3 == true && github.event_name != 'pull_request'
         shell: bash
