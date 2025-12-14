@@ -1,0 +1,59 @@
+---
+name: Build disk image
+on:
+  repository_dispatch:
+    types: ["container-built"]
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "0 1 * * TUE"
+  workflow_dispatch:
+
+jobs:
+  build_release:
+    name: Build and release disk image
+    permissions:
+      contents: write
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ["amd64", "arm64"]
+        flavor: ["", "nvidia"]
+    env:
+      IMAGE_NAME: ${{ matrix.flavor == '' && github.event.repository.name || format('{0}-{1}', github.event.repository.name, matrix.flavor ) }}
+    runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    outputs:
+      image_tag: ${{ steps.build.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+
+      - name: Build disk image
+        id: build-iso
+        uses: osbuild/bootc-image-builder-action@v0.0.2
+        with:
+          config-file: ./disk-image.config.toml
+          image: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+          rootfs: btrfs
+          types: qcow2
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: ${{ github.event.repository.name }}-${{ matrix.platform }}
+          path: ${{ steps.build-iso.outputs.output-directory }}
+          if-no-files-found: error
+
+      - name: Upload Release Artifact
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OUTPUT_DIRECTORY: ${{ steps.build-iso.outputs.output-directory }}
+          PLATFORM: ${{ matrix.platform }}
+          IMAGE_NAME: "${{ github.event.repository.name }}"
+        run: |
+          sudo mv "$(find "${OUTPUT_DIRECTORY}" -iname "*.qcow2"  | head -n 1)" "./${IMAGE_NAME}-${PLATFORM}.qcow2"
+          gh release upload --clobber rolling ./*.qcow2

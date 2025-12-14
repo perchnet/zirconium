@@ -1,0 +1,5 @@
+[[customizations.filesystem]]
+mountpoint = "/"
+minsize = "5 GiB"
+
+
