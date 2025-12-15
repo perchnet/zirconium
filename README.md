@@ -1,3 +1,5 @@
+## this is my personal hacking fork. you probably want [upstream zirconium](https://github.com/zirconium-dev/zirconium).
+
 # Zirconium
 ***Do you like how I dance? I've got Zirconium pants!***
 
